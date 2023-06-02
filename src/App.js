@@ -1,71 +1,72 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import './App.css';
 
-function App() {
-  const [file, setFile] = useState(null);
-  const [prediction, setPrediction] = useState(null);
+const App = () => {
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [result, setResult] = useState(null);
+    const [loading, setLoading] = useState(false);
 
-  const handleFileChange = (event) => {
-    setFile(event.target.files[0]);
-  };
+    const handleFileChange = (event) => {
+        setSelectedFile(event.target.files[0]);
+    };
 
-  const handleFormSubmit = (event) => {
-    event.preventDefault();
+    const handleSubmit = async (event) => {
+        event.preventDefault();
 
-    if (!file) {
-      alert('Please select an image file.');
-      return;
-    }
+        const formData = new FormData();
+        formData.append('img', selectedFile);
 
-    const formData = new FormData();
-    formData.append('img', file);
+        try {
+            setLoading(true);
+            const response = await axios.post('http://localhost:5000/', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
 
-    axios
-        .post('http://localhost:5000/', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        })
-        .then((response) => {
-          setPrediction(response.data);
-        })
-        .catch((error) => {
-          console.error(error);
-        });
-  };
+            setResult(response.data);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  return (
-      <div className="container">
-        <h1>Leaf Disease Classification</h1>
-        <form onSubmit={handleFormSubmit}>
-          <div className="mb-3">
-            <label htmlFor="img" className="form-label">
-              Select an image:
-            </label>
-            <input
-                type="file"
-                className="form-control"
-                id="img"
-                accept="image/*"
-                onChange={handleFileChange}
-            />
-          </div>
-          <button type="submit" className="btn btn-primary">
-            Submit
-          </button>
-        </form>
-        {prediction && (
-            <div className="mt-4">
-              <h2>Prediction:</h2>
-              <p>Label Name: {prediction['Label Name']}</p>
-              <p>Accuracy: {prediction['Accuracy']}</p>
-              {prediction['Graph'] && (
-                  <img src={prediction['Graph']} alt="Prediction Graph" className="img-fluid" />
-              )}
-            </div>
-        )}
-      </div>
-  );
-}
+    return (
+        <div className="container">
+            <h1 className="title">Leaf Disease Classification</h1>
+            <form className="upload-form" onSubmit={handleSubmit}>
+                <label htmlFor="file-input" className="file-label">
+                    Choose an image:
+                    <input id="file-input" type="file" onChange={handleFileChange} />
+                </label>
+                <button type="submit" className="submit-btn" disabled={!selectedFile || loading}>
+                    {loading ? 'Uploading...' : 'Upload'}
+                </button>
+            </form>
+            {selectedFile && (
+                <div className="uploaded-image">
+                    <h2>Uploaded Image:</h2>
+                    <img src={URL.createObjectURL(selectedFile)} alt="Uploaded" />
+                </div>
+            )}
+            {result && (
+                <div className="result">
+                    <h2>Result:</h2>
+                    <p>Label Name: {result['Label Name']}</p>
+                    <p>Accuracy: {result['Accuracy']}</p>
+                    {result['Graph'] && (
+                        <img src={`data:image/png;base64,${result['Graph']}`} alt="Graph" />
+                    )}
+                    <h2 className="symptoms-label">Symptoms:</h2>
+                    <p>{result['Symptoms']}</p>
+                    <h2 className="treatment-label">Treatment:</h2>
+                    <p>{result['Treatment']}</p>
+                </div>
+            )}
+        </div>
+    );
+};
 
 export default App;
